@@ -1,0 +1,43 @@
+---
+- name: Install Nginx
+  apt:
+    name: '{{ nginx_service_name }}'
+    update_cache: yes
+
+- name: Create a TLS certificate directory
+  file:
+    path: "{{ nginx_tls_dir }}"
+    state: directory
+    mode: '0750'
+
+- name: Create a Nginx configuration directory
+  file:
+    path: "{{ nginx_conf_file }}"
+    state: directory
+    mode: '0750'
+
+- name: Create a Nginx symlink directory
+  file:
+    path: "{{ nginx_symlink_dir }}"
+    state: directory
+    mode: '0750'
+
+- name: Copy TLS files
+  copy:
+    src: "{{ item }}"
+    dest: "{{ nginx_tls_dir }}"
+    mode: '0600'
+  with_items:
+    - "{{ nginx_key_file }}"
+    - "{{ nginx_cert_file }}"
+  notify: Restart Nginx
+
+- name: Manage Nginx configuration file
+  template:
+    src: templates/nginx.conf.j2
+    dest: "/etc/nginx/nginx.conf"
+    mode: '0644'
+  notify: Restart Nginx
+
+- name: Restart Nginx
+  meta: flush_handlers

@@ -1,0 +1,18 @@
+---
+galaxy_info:
+  author: ivl02
+  role_name: nginx
+  description: Nginx installation for Debian/Ubuntu
+  license: MIT
+  min_ansible_version: 2.10.4
+  platforms:
+    - name: Ubuntu
+      versions:
+        - bionic
+        - focal
+  galaxy_tags:
+    - nginx
+    - proxy
+    - webserver
+
+dependencies: []

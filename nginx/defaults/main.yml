@@ -1,0 +1,15 @@
+---
+# Service, files and directories variables
+nginx_service_name: nginx
+nginx_tls_dir: /etc/nginx/ssl/
+nginx_conf_dir: /etc/nginx/sites-available
+nginx_symlink_dir: /etc/nginx/sites-enabled
+nginx_conf_file: /etc/nginx/sites-available/default
+
+# TLS key and certificate variables
+nginx_key_file: nginx.key
+nginx_cert_file: nginx.crt
+
+# Configuration files variables
+nginx_server_name: localhost
+nginx_share_dir: /usr/share/nginx/html

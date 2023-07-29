@@ -1,0 +1,9 @@
+---
+- name: Ansible Playbook
+  hosts: webservers
+  become: True
+  gather_facts: false
+  strategy: free
+  roles:
+    - kafka
+    - nginx

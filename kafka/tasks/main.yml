@@ -1,0 +1,148 @@
+---
+- name: Create Kafka group
+  group:
+    name: '{{ kafka_group }}'
+    state: present
+    system: yes
+
+- name: Create Kafka user
+  user:
+    name: '{{ kafka_user }}'
+    group: '{{ kafka_group }}'
+    state: present
+    createhome: no
+    system: yes
+
+- name: Check if Kafka has already been downloaded
+  stat:
+    path: '{{ kafka_dir }}_{{ kafka_scala_version }}-{{ kafka_version }}'
+  register: dir
+
+- name: Download Apache Kafka
+  get_url:
+    url: '{{ kafka_download_base_url }}/{{ kafka_version }}/kafka_{{ kafka_scala_version }}-{{ kafka_version }}.tgz'
+    dest: /tmp
+  when: not dir.stat.exists
+
+- name: Unpack Apache Kafka
+  unarchive:
+    src: /tmp/kafka_{{ kafka_scala_version }}-{{ kafka_version }}.tgz
+    dest: '{{ kafka_root_dir }}'
+    copy: no
+    group: '{{ kafka_group }}'
+    owner: '{{ kafka_user }}'
+  when: not dir.stat.exists
+
+- name: Create symlink to Kafka installation directory
+  file:
+    src: '{{ kafka_root_dir }}/kafka_{{ kafka_scala_version }}-{{ kafka_version }}'
+    dest: '{{ kafka_dir }}'
+    state: link
+    group: '{{ kafka_group }}'
+    owner: '{{ kafka_user }}'
+
+- name: Create directory for Kafka data log files
+  file:
+    path: '{{ item }}'
+    state: directory
+    group: '{{ kafka_group }}'
+    owner: '{{ kafka_user }}'
+    mode: 0755
+  with_items: "{{ kafka_data_log_dirs.split(',') }}"
+
+- name: Create directory for Kafka application logs
+  file:
+    path: '{{ kafka_log_dir }}'
+    state: directory
+    group: '{{ kafka_group }}'
+    owner: '{{ kafka_user }}'
+    mode: 0755
+
+- name: Register '{{ kafka_dir }}/logs' directory status
+  stat:
+    path: '{{ kafka_dir }}/logs'
+  register: application_logs_dir
+
+- name: Create symlink to application log directory
+  file:
+    src: '{{ kafka_log_dir }}'
+    dest: '{{ kafka_dir }}/logs'
+    state: link
+    group: '{{ kafka_group }}'
+    owner: '{{ kafka_user }}'
+    mode: 0755
+    follow: no
+  when: not application_logs_dir.stat.exists
+
+- name: Create directory for symlink to Kafka configuration files
+  file:
+    path: /etc/kafka
+    state: directory
+    group: '{{ kafka_group }}'
+    owner: '{{ kafka_user }}'
+    mode: 0755
+
+- name: Template configuration file to server.properties
+  template:
+    src: server.properties.j2
+    dest: '{{ kafka_dir }}/config/server.properties'
+    group: '{{ kafka_group }}'
+    owner: '{{ kafka_user }}'
+    mode: 0644
+
+- name: Template configuration file to zookeeper.properties
+  template:
+    src: zookeeper.properties.j2
+    dest: '{{ kafka_dir }}/config/zookeeper.properties'
+    group: '{{ kafka_group }}'
+    owner: '{{ kafka_user }}'
+    mode: 0644
+
+- name: Template configuration file to connect-standalone.properties
+  template:
+    src: connect-standalone.properties.j2
+    dest: '{{ kafka_dir }}/config/connect-standalone.properties'
+    group: '{{ kafka_group }}'
+    owner: '{{ kafka_user }}'
+    mode: 0644
+
+- name: Create symlink to kafka server.properties file
+  file:
+    src: '{{ kafka_dir }}/config/server.properties'
+    dest: /etc/kafka/server.properties
+    state: link
+    group: '{{ kafka_group }}'
+    owner: '{{ kafka_user }}'
+
+- name: Create symlink to Kafka connect-standalone.properties file
+  file:
+    src: '{{ kafka_dir }}/config/connect-standalone.properties'
+    dest: /etc/kafka/connect-standalone.properties
+    state: link
+    group: '{{ kafka_group }}'
+    owner: '{{ kafka_user }}'
+
+- name: Template Kafka systemd service
+  template:
+    src: kafka.service.j2
+    dest: '{{ kafka_unit_path }}'
+    group: '{{ kafka_group }}'
+    owner: '{{ kafka_user }}'
+    mode: 0644
+
+- name: Force systemd to reread configs
+  systemd:
+    daemon_reload: true
+
+- name: Install and start the Kafka service
+  service:
+    name: kafka
+    state: started
+    enabled: yes
+  notify:
+    - Restart Kafka systemd
+
+- name: Delete the Kafka archive file
+  file:
+    path: /tmp/kafka_{{ kafka_scala_version }}-{{ kafka_version }}.tgz
+    state: absent
